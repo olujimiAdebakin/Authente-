@@ -19,7 +19,7 @@ type DB struct {
 
 // New creates a new database connection pool
 func New(connectionString string) (*DB, error) {
-	db, err := sql.Open("postgres", connectionString) // Change driver as needed
+	db, err := sql.Open("postgres", connectionString) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
