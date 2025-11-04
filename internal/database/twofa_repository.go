@@ -1,12 +1,11 @@
 package database
 
-
 import (
+	_ "authentio/internal/models"
+	"authentio/internal/repository"
 	"context"
 	"database/sql"
 	"errors"
-	_"authentio/internal/models"
-	"authentio/internal/repository"
 )
 
 type twoFARepository struct {
@@ -17,7 +16,7 @@ func NewTwoFARepository(db *sql.DB) repository.TwoFARepository {
 	return &twoFARepository{db: db}
 }
 
-func (r *twoFARepository) Enable2FA(ctx context.Context, userID int64, secret string) error {
+func (r *twoFARepository) EnableEmail2FA(ctx context.Context, userID int64) error {
 	// For email OTP, secret is not used
 	query := `
 		INSERT INTO two_fa_configs (user_id, method, secret, enabled) 
@@ -55,8 +54,22 @@ func (r *twoFARepository) Get2FASecret(ctx context.Context, userID int64) (strin
 	return "", errors.New("not applicable for email OTP")
 }
 
-func (r *twoFARepository) VerifyCode(ctx context.Context, userID int64, code string) (bool, error) {
+func (r *twoFARepository) VerifyOTP(ctx context.Context, userID int64,email, code, otpType string) (bool, error) {
 	// This method is not used for email OTP
 	// Email OTP verification is handled by OTPRepository
 	return false, errors.New("use OTPRepository for email OTP verification")
+}
+
+// Get2FAMethod returns the 2FA method (e.g., "email", "sms", "totp") for a user
+func (r *twoFARepository) Get2FAMethod(ctx context.Context, userID int64) (string, error) {
+	query := `SELECT method FROM two_fa_configs WHERE user_id = $1`
+	var method string
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(&method)
+	if err == sql.ErrNoRows {
+		return "", nil // No 2FA method set
+	}
+	if err != nil {
+		return "", err
+	}
+	return method, nil
 }

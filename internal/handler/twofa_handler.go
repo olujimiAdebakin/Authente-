@@ -20,6 +20,41 @@ func NewTwoFAHandler(authService service.AuthService) *TwoFAHandler {
 	}
 }
 
+
+// Enable2FA enables 2FA for the authenticated user
+func (h *TwoFAHandler) EnableEmail2FA(c *gin.Context) {
+	// Get userID from JWT token (set by auth middleware)
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	if err := h.authService.EnableEmail2FA(c.Request.Context(), userID.(int64)); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "2FA enabled successfully"})
+}
+
+// Disable2FA disables 2FA for the authenticated user
+func (h *TwoFAHandler) Disable2FA(c *gin.Context) {
+	// Get userID from JWT token (set by auth middleware)
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	if err := h.authService.Disable2FA(c.Request.Context(), userID.(int64)); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "2FA disabled successfully"})
+}
+
 // SendOTP initiates 2FA by sending an OTP
 func (h *TwoFAHandler) SendOTP(c *gin.Context) {
 	var req struct {

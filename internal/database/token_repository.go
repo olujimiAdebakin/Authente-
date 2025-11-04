@@ -29,7 +29,7 @@ func (r *tokenRepository) SaveRefreshToken(ctx context.Context, token *models.Re
 	err := r.db.QueryRowContext(ctx, query,
 		token.UserID,
 		token.Token,
-		token.ExpiresAt,
+		token.ExpiredAt,
 		time.Now(),
 	).Scan(&token.ID)
 
@@ -52,7 +52,7 @@ func (r *tokenRepository) GetRefreshToken(ctx context.Context, tokenStr string) 
 		&token.ID,
 		&token.UserID,
 		&token.Token,
-		&token.ExpiresAt,
+		&token.ExpiredAt,
 		&token.CreatedAt,
 	)
 

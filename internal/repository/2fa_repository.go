@@ -21,5 +21,5 @@ type TwoFARepository interface {
 	Get2FAMethod(ctx context.Context, userID int64) (string, error)
 
 	// VerifyOTP verifies an OTP code for 2FA
-	VerifyOTP(ctx context.Context, email, code, otpType string) (bool, error)
+	VerifyOTP(ctx context.Context, userID int64, email, code, otpType string) (bool, error)
 }

@@ -26,7 +26,9 @@ func (m *Manager) GenerateToken(userID int64, email string, firstName, lastName 
 	claims := jwt.MapClaims{
 		"user_id": userID,
 		"email":   email,
-		"name":    firstName + " " + lastName, 
+		"first_name": firstName,  // Change from "name" to "first_name"
+            "last_name":  lastName, 
+		"name":    firstName + " " + lastName,
 		// Token expires 24 hours from creation, represented as a Unix timestamp
 		"exp": time.Now().Add(24 * time.Hour).Unix(),
 	}

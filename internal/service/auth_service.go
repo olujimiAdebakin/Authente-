@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"time"
 
@@ -15,10 +17,11 @@ import (
 )
 
 type AuthService struct {
-	userRepo repository.UserRepository
-	twoFARepo repository.TwoFARepository
-	otpRepo repository.OTPRepository
-	jwtManager *jwt.Manager
+	userRepo    repository.UserRepository
+	twoFARepo   repository.TwoFARepository
+	otpRepo     repository.OTPRepository
+	tokenRepo   repository.TokenRepository
+	jwtManager  *jwt.Manager
 }
 
 // NewAuthService constructs the AuthService with its dependencies.
@@ -26,12 +29,14 @@ func NewAuthService(
 	userRepo repository.UserRepository,
 	twoFARepo repository.TwoFARepository,
 	otpRepo repository.OTPRepository,
+	tokenRepo repository.TokenRepository,
 	jwtManager *jwt.Manager,
 ) *AuthService {
 	return &AuthService{
-		userRepo: userRepo,
-		otpRepo: otpRepo,
+		userRepo:   userRepo,
+		otpRepo:    otpRepo,
 		twoFARepo:  twoFARepo,
+		tokenRepo:  tokenRepo,
 		jwtManager: jwtManager,
 	}
 }
@@ -43,8 +48,10 @@ type RegisterResponse struct {
 
 // LoginResponse is returned after successful login
 type LoginResponse struct {
-	User  response.UserResponse `json:"user"`
-	Token string               `json:"token"`
+	User         response.UserResponse `json:"user"`
+	AccessToken  string               `json:"access_token"`
+	RefreshToken string               `json:"refresh_token"`
+	ExpiresIn    int                  `json:"expires_in"`    // Access token expiration in seconds
 }
 
 // Register handles user registration flow.
@@ -105,27 +112,46 @@ func (s *AuthService) Login(ctx context.Context, req models.LoginRequest) (*Logi
 		return nil, errors.New("invalid credentials")
 	}
 
-	token, err := s.jwtManager.GenerateToken(user.ID, user.Email, user.FirstName, user.LastName)
+	// Generate access token
+	accessToken, err := s.jwtManager.GenerateToken(user.ID, user.Email, user.FirstName, user.LastName)
 	if err != nil {
 		return nil, err
 	}
 
+	// Generate refresh token
+	refreshToken := &models.RefreshToken{
+		UserID: user.ID,
+		Token:  generateSecureToken(), // We'll implement this
+		// ExpiredAt: time.Now().Add(30 * 24 * time.Hour), // 30 days
+		BaseModel: models.BaseModel{
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+			ExpiredAt: timePtr(time.Now().Add(30 * 24 * time.Hour)),
+		},
+	}
+
+	
+	// Save refresh token
+	if err := s.tokenRepo.SaveRefreshToken(ctx, refreshToken); err != nil {
+		return nil, err
+	}
 	
 	// Convert to response DTO
 	userResponse := response.UserResponse{
-		ID:       user.ID, 
+		ID:        user.ID, 
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
-		Email:    user.Email,
-		IsActive: user.IsActive,
+		Email:     user.Email,
+		IsActive:  user.IsActive,
 	}
 
 	logger.Info("user logged in", "email", req.Email)
-	
 
 	return &LoginResponse{
-		User:  userResponse,
-		Token: token,
+		User:         userResponse,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken.Token,
+		ExpiresIn:    3600, // 1 hour - should match your JWT expiration
 	}, nil
 }
 
@@ -217,6 +243,21 @@ func (s *AuthService) ResetPassword(ctx context.Context, email, code, newPasswor
 	return nil
 }
 
+// EnableEmail2FA enables email-based 2FA for a user
+func (s *AuthService) EnableEmail2FA(ctx context.Context, userID int64) error {
+	return s.twoFARepo.EnableEmail2FA(ctx, userID)
+}
+
+// Disable2FA disables 2FA for a user
+func (s *AuthService) Disable2FA(ctx context.Context, userID int64) error {
+	return s.twoFARepo.Disable2FA(ctx, userID)
+}
+
+// Is2FAEnabled checks if 2FA is enabled for a user
+func (s *AuthService) Is2FAEnabled(ctx context.Context, userID int64) (bool, error) {
+	return s.twoFARepo.Is2FAEnabled(ctx, userID)
+}
+
 // Send2FAOTP generates and sends a 2FA OTP code
 func (s *AuthService) Send2FAOTP(ctx context.Context, email string) error {
 	// Check if user exists
@@ -280,6 +321,77 @@ func (s *AuthService) UpdateProfile(ctx context.Context, userID int64, firstName
 	return nil
 }
 
+// RefreshToken generates new access token using a refresh token
+func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenStr string) (*LoginResponse, error) {
+	// Get the refresh token from database
+	token, err := s.tokenRepo.GetRefreshToken(ctx, refreshTokenStr)
+	if err != nil {
+		return nil, errors.New("invalid refresh token")
+	}
+
+	// Get the user
+	user, err := s.userRepo.FindByID(ctx, token.UserID)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+
+	// Generate new access token
+	accessToken, err := s.jwtManager.GenerateToken(user.ID, user.Email, user.FirstName, user.LastName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Optional: Rotate refresh token for better security
+	// Delete old refresh token
+	if err := s.tokenRepo.DeleteRefreshToken(ctx, refreshTokenStr); err != nil {
+		logger.Error("failed to delete old refresh token", "error", err)
+	}
+
+	// Generate new refresh token
+	newRefreshToken := &models.RefreshToken{
+		UserID: user.ID,
+		Token:  generateSecureToken(),
+		
+		BaseModel: models.BaseModel{
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+			ExpiredAt: timePtr(time.Now().Add(30 * 24 * time.Hour)),
+		},
+	}
+
+	// Save new refresh token
+	if err := s.tokenRepo.SaveRefreshToken(ctx, newRefreshToken); err != nil {
+		return nil, err
+	}
+
+	userResponse := response.UserResponse{
+		ID:        user.ID,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Email:     user.Email,
+		IsActive:  user.IsActive,
+	}
+
+	return &LoginResponse{
+		User:         userResponse,
+		AccessToken:  accessToken,
+		RefreshToken: newRefreshToken.Token,
+		ExpiresIn:    3600,
+	}, nil
+}
+
+
+
+// Logout invalidates the refresh token
+func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
+	return s.tokenRepo.DeleteRefreshToken(ctx, refreshToken)
+}
+
+// LogoutAll invalidates all refresh tokens for a user
+func (s *AuthService) LogoutAll(ctx context.Context, userID int64) error {
+	return s.tokenRepo.DeleteUserRefreshTokens(ctx, userID)
+}
+
 // Helper function to generate random code
 func generateRandomCode(length int) string {
 	const digits = "0123456789"
@@ -289,3 +401,17 @@ func generateRandomCode(length int) string {
 	}
 	return string(bytes)
 }
+
+// Helper function to generate secure random token
+func generateSecureToken() string {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		panic(err) // Should never happen
+	}
+	return hex.EncodeToString(bytes)
+}
+
+// Helper to create time pointer
+      func timePtr(t time.Time) *time.Time {
+        return &t
+      }
