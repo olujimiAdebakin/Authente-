@@ -11,6 +11,10 @@ import (
 	"authentio/internal/config"
 	"authentio/internal/router"
 	"authentio/pkg/logger"
+	"authentio/pkg/jwt"
+	"authentio/internal/middleware"
+	"authentio/internal/handler"
+
 
 	"github.com/gin-gonic/gin"
 )
@@ -38,8 +42,11 @@ func main() {
 		gin.SetMode(gin.DebugMode)
 	}
 
-	// Initialize router with dependencies
-	r := router.SetupRouter(cfg)
+//  Create JWT manager
+	jwtManager := jwt.NewManager(os.Getenv("JWT_SECRET"))
+	
+	// Setup router with dependencies
+	router := router.SetupRouter(handler, redisClient, jwtManager)
 
 	// Create HTTP server
 	srv := &http.Server{

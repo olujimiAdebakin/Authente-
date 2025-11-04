@@ -7,6 +7,7 @@ import (
 	"authentio/internal/handler"
 	"authentio/internal/middleware"
 	"authentio/pkg/logger"
+	"authentio/pkg/jwt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -14,14 +15,16 @@ import (
 )
 
 // SetupRouter configures the Gin engine with routes, middlewares, and health checks.
-func SetupRouter(h *handler.Handler, redis *redis.Client) *gin.Engine {
+func SetupRouter(h *handler.Handler, redis *redis.Client, jwtManager *jwt.Manager) *gin.Engine {
 	// Initialize the Gin engine
 	r := gin.New()
 
 	// --- Global Middlewares ---
 	r.Use(gin.Recovery())                      // Recover from panics
 	r.Use(middleware.RequestLogger())          // Custom structured request logger
-	r.Use(middleware.CORSMiddleware())         // CORS handler
+	r.Use(middleware.CORSMiddleware())   // CORS handler
+
+	r.Use(middleware.GeoIPMiddleware())
 
 	// Choose rate limiter based on environment
 	if os.Getenv("ENV") == "production" {
@@ -60,7 +63,7 @@ func SetupRouter(h *handler.Handler, redis *redis.Client) *gin.Engine {
 
 		// Protected 2FA management routes
 		twoFA := api.Group("/2fa")
-		twoFA.Use(middleware.AuthRequired())
+		twoFA.Use(middleware.AuthRequired(jwtManager))
 		{
 			twoFA.POST("/enableOtp", h.TwoFA.EnableEmail2FA)  // 
 			twoFA.POST("/disableOtp", h.TwoFA.Disable2FA)
@@ -69,7 +72,7 @@ func SetupRouter(h *handler.Handler, redis *redis.Client) *gin.Engine {
 
 		// Protected user routes
 		user := api.Group("/user")
-		user.Use(middleware.AuthRequired())
+		user.Use(middleware.AuthRequired(jwtManager))
 		{
 			user.GET("/getProfile", h.User.GetProfile)        // getProfile endpoint
 			user.PUT("/updateProfile", h.User.UpdateProfile)     // updateProfile endpoint
