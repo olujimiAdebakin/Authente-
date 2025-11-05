@@ -31,7 +31,7 @@ func NewRedisRateLimiter(redis *redis.Client, limit int, window time.Duration) *
 
 // RateLimiterMiddlewareRedis returns a Gin middleware for rate limiting using Redis
 func RateLimiterMiddlewareRedis(redis *redis.Client) gin.HandlerFunc {
-	limiter := NewRedisRateLimiter(redis, 100, time.Minute) // 100 requests per minute
+	limiter := NewRedisRateLimiter(redis, 10, time.Minute) // 100 requests per minute
 	return limiter.Handle
 }
 

@@ -5,7 +5,7 @@ import (
 
 	"authentio/internal/models"
 	"authentio/internal/service"
-	_"authentio/config"
+	"authentio/internal/config"
 
 	"github.com/gin-gonic/gin"
 )
@@ -161,7 +161,7 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 	}
 
 	// Delegate to AuthService
-	response, err := h.authService.GoogleAuth(c.Request.Context(), req.IDToken)
+	response, err := h.authService.GoogleAuth(c.Request.Context(), req.IDToken, config.GoogleOAuthConfig.ClientID,)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
