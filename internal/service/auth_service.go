@@ -76,7 +76,7 @@ func (s *AuthService) Register(ctx context.Context, req models.RegisterRequest) 
 	}
 
 	user := &models.User{
-		FirstName: req.FirstName,  // Add firstName
+		FirstName: req.FirstName,  
 		LastName:  req.LastName,
 		Email:     req.Email,
 		Password:  hashed,
@@ -95,7 +95,7 @@ func (s *AuthService) Register(ctx context.Context, req models.RegisterRequest) 
 		// Convert to response DTO
 	userResponse := response.UserResponse{
 		ID:       user.ID,
-		FirstName: user.FirstName,  // Add firstName
+		FirstName: user.FirstName,  
 		LastName:  user.LastName,  
 		Email:    user.Email,
 		IsActive: user.IsActive,
@@ -160,7 +160,7 @@ func (s *AuthService) Login(ctx context.Context, req models.LoginRequest) (*resp
 		User:         userResponse,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken.Token,
-		ExpiresIn:    3600, // 1 hour - should match your JWT expiration
+		ExpiresIn:    24, 
 	}, nil
 }
 
@@ -413,7 +413,7 @@ func (s *AuthService) UpdateProfile(ctx context.Context, userID int64, firstName
 }
 
 // RefreshToken generates new access token using a refresh token
-func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenStr string) (*LoginResponse, error) {
+func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenStr string) (*response.LoginResponse, error) {
 	// Get the refresh token from database
 	token, err := s.tokenRepo.GetRefreshToken(ctx, refreshTokenStr)
 	if err != nil {
@@ -463,7 +463,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenStr string) 
 		IsActive:  user.IsActive,
 	}
 
-	return &LoginResponse{
+	return &response.LoginResponse{
 		User:         userResponse,
 		AccessToken:  accessToken,
 		RefreshToken: newRefreshToken.Token,

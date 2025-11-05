@@ -2,11 +2,20 @@ package password
 
 import (
 	"golang.org/x/crypto/bcrypt"
+	"strconv"
+	"os"
 )
 
 // Hash hashes a password using bcrypt
 func Hash(password string) (string, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		cost := bcrypt.DefaultCost 
+	if c := os.Getenv("BCRYPT_COST"); c != "" {
+		if parsed, err := strconv.Atoi(c); err == nil {
+			cost = parsed
+		}
+	}
+
+	 hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), cost)
 	if err != nil {
 		return "", err
 	}

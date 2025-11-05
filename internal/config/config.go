@@ -21,17 +21,16 @@ type Config struct {
 	AccessTokenTTL     time.Duration `env:"ACCESS_TOKEN_TTL" envDefault:"15m"`
 	RefreshTokenTTL    time.Duration `env:"REFRESH_TOKEN_TTL" envDefault:"168h"` // 7 days
 
-	SMTPHost     string `env:"SMTP_HOST"`
-	SMTPPort     int    `env:"SMTP_PORT"`
-	SMTPUser     string `env:"SMTP_USER"`
-	SMTPPassword string `env:"SMTP_PASSWORD"`
-
-	// Add more fields as needed
+	SMTPHost     string `env:"SMTP_HOST" envDefault:"smtp.gmail.com"`
+	SMTPPort     int    `env:"SMTP_PORT" envDefault:"587"`
+	SMTPUsername string `env:"SMTP_USERNAME"`
+	SMTPPassword string `env:"SMTP_PASSWORD,required"`
+	SMTPFrom     string `env:"SMTP_FROM,required"` 
 }
 
-// Load loads the config from environment variables and optionally .env file
+// This loads the config from environment variables and optionally .env file
 func LoadConfig() (*Config, error) {
-	// Load .env file if present (optional)
+	// Load .env file if present 
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, loading from system env")
 	}
@@ -41,7 +40,7 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 
-	// You can add custom validation here if needed
+	// This code is performing custom validation on the server port configuration
 	if cfg.ServerPort <= 0 || cfg.ServerPort > 65535 {
 		return nil,  ErrInvalidPort(cfg.ServerPort)
 	}
@@ -49,7 +48,7 @@ func LoadConfig() (*Config, error) {
 	return cfg, nil
 }
 
-// Custom error example (optional)
+// An example of custom error
 type ErrInvalidPort int
 
 func (e ErrInvalidPort) Error() string {
