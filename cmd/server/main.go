@@ -14,14 +14,40 @@ import (
 	"authentio/internal/handler"
 	"authentio/internal/router"
 	"authentio/internal/service"
-	"authentio/pkg/email" // <-- Make sure this import exists
+	"authentio/pkg/email" 
 	"authentio/pkg/jwt"
 	"authentio/pkg/logger"
-
+	
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	_ "github.com/jackc/pgx/v5/stdlib"
+
+	// Swagger imports
+	_ "authentio/docs" // This imports your generated docs
 )
+
+// @title Authentio API
+// @version 1.0
+// @description Secure authentication service with JWT, OAuth2, 2FA, and password reset functionality
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name Authentio Support
+// @contact.url https://authentio.com/support
+// @contact.email support@authentio.com
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description JWT Bearer token. Format: "Bearer {your_jwt_token}"
+
+// @externalDocs.description  OpenAPI
+// @externalDocs.url          https://swagger.io/resources/open-api/
 
 // main is the entry point of the Authentio authentication service.
 // It initializes configuration, logging, database connections, Redis, email client,
@@ -33,6 +59,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "failed to load config: %v\n", err)
 		os.Exit(1)
 	}
+
+	googleOAuthConfig := config.GoogleOAuthConfig
 
 	// Initialize email client for sending OTPs and notifications
 	emailClient := email.NewClient(
@@ -111,7 +139,7 @@ func main() {
 	twoFARepo := dbpkg.NewTwoFARepository(db)
 
 	// Initialize authentication service
-	authSrv := service.NewAuthService(userRepo, twoFARepo, otpRepo, tokenRepo, *jwtManager)
+	authSrv := service.NewAuthService(userRepo, twoFARepo, otpRepo, tokenRepo, jwtManager, emailClient, googleOAuthConfig)
 
 	// Initialize HTTP handlers
 	h := handler.NewHandler(*authSrv)

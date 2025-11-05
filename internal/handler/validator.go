@@ -4,6 +4,7 @@ package handler
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -32,10 +33,24 @@ func InitValidator() {
 
 }
 
-	func formatValidationError(err error) map[string]string {
+func FormatValidationError(err error) map[string]string {
 	errs := make(map[string]string)
 	for _, e := range err.(validator.ValidationErrors) {
-		errs[e.Field()] = e.Tag()
+		// Here is a more user-friendly error messages
+		switch e.Tag() {
+		case "required":
+			errs[strings.ToLower(e.Field())] = "This field is required"
+		case "email":
+			errs[strings.ToLower(e.Field())] = "Invalid email format"
+		case "min":
+			errs[strings.ToLower(e.Field())] = "Value is too short"
+		case "password":
+			errs[strings.ToLower(e.Field())] = "Password must contain uppercase, lowercase, number, and special character"
+		case "alphaSpace":
+			errs[strings.ToLower(e.Field())] = "Only letters and spaces are allowed"
+		default:
+			errs[strings.ToLower(e.Field())] = "Invalid value"
+		}
 	}
 	return errs
 }

@@ -1,0 +1,673 @@
+basePath: /api/v1
+definitions:
+  handler.ForgotPasswordRequest:
+    properties:
+      email:
+        description: User's registered email address
+        type: string
+    required:
+    - email
+    type: object
+  handler.GoogleLoginRequest:
+    properties:
+      id_token:
+        description: Google ID token from frontend OAuth flow
+        type: string
+    required:
+    - id_token
+    type: object
+  handler.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        description: Valid refresh token to exchange for new access token
+        type: string
+    required:
+    - refresh_token
+    type: object
+  handler.ResetPasswordRequest:
+    properties:
+      code:
+        description: OTP code received via email
+        type: string
+      email:
+        description: User's registered email address
+        type: string
+      new_password:
+        description: New password (minimum 8 characters)
+        minLength: 8
+        type: string
+    required:
+    - code
+    - email
+    - new_password
+    type: object
+  handler.SendOTPRequest:
+    properties:
+      email:
+        description: Email address to send OTP to
+        type: string
+    required:
+    - email
+    type: object
+  handler.UpdateProfileRequest:
+    properties:
+      email:
+        description: User's email address (optional update)
+        type: string
+      first_name:
+        description: User's first name
+        type: string
+      last_name:
+        description: User's last name
+        type: string
+    type: object
+  handler.Verify2FARequest:
+    properties:
+      code:
+        description: 2FA verification code
+        type: string
+      email:
+        description: User's email address
+        type: string
+    required:
+    - code
+    - email
+    type: object
+  handler.VerifyOTPRequest:
+    properties:
+      code:
+        description: OTP code to verify
+        type: string
+      email:
+        description: User's email address
+        type: string
+    required:
+    - code
+    - email
+    type: object
+  models.LoginRequest:
+    properties:
+      email:
+        maxLength: 100
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  models.RegisterRequest:
+    properties:
+      email:
+        maxLength: 50
+        type: string
+      first_name:
+        maxLength: 50
+        minLength: 2
+        type: string
+      last_name:
+        maxLength: 50
+        minLength: 2
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - first_name
+    - last_name
+    - password
+    type: object
+  response.LoginResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      refresh_token:
+        type: string
+      user:
+        $ref: '#/definitions/response.UserResponse'
+    type: object
+  response.RegisterResponse:
+    properties:
+      message:
+        type: string
+      user:
+        $ref: '#/definitions/response.UserResponse'
+    type: object
+  response.UserResponse:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      first_name:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      last_name:
+        type: string
+    type: object
+externalDocs:
+  description: OpenAPI
+  url: https://swagger.io/resources/open-api/
+host: localhost:8080
+info:
+  contact:
+    email: support@authentio.com
+    name: Authentio Support
+    url: https://authentio.com/support
+  description: Secure authentication service with JWT, OAuth2, 2FA, and password reset
+    functionality
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Authentio API
+  version: "1.0"
+paths:
+  /2fa/disableOtp:
+    post:
+      consumes:
+      - application/json
+      description: Disable two-factor authentication for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 2FA disabled successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Failed to disable 2FA
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized - Invalid or missing JWT token
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Disable 2FA
+      tags:
+      - 2fa
+  /2fa/enableOtp:
+    post:
+      consumes:
+      - application/json
+      description: Enable two-factor authentication using email for the authenticated
+        user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 2FA enabled successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Failed to enable 2FA
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized - Invalid or missing JWT token
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Enable email-based 2FA
+      tags:
+      - 2fa
+  /2fa/sendOtp:
+    post:
+      consumes:
+      - application/json
+      description: Send a one-time password to the user's email for two-factor authentication
+      parameters:
+      - description: Email address to send OTP
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.SendOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OTP sent successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid email format or user not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to send OTP email
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Send 2FA OTP code
+      tags:
+      - 2fa
+  /2fa/verifyOtp:
+    post:
+      consumes:
+      - application/json
+      description: Verify the one-time password for two-factor authentication
+      parameters:
+      - description: OTP verification data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.VerifyOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OTP verified successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid OTP code, expired code, or invalid email
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Verify 2FA OTP code
+      tags:
+      - 2fa
+  /auth/2fa/verify:
+    post:
+      consumes:
+      - application/json
+      description: Verify the 2FA code sent to user's email during login process
+      parameters:
+      - description: 2FA verification request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.Verify2FARequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 2FA verification successful
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid or expired 2FA code
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Verify two-factor authentication code
+      tags:
+      - authentication
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Send a password reset code to the user's email address
+      parameters:
+      - description: Password reset request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password reset email sent successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid email format
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Request password reset
+      tags:
+      - authentication
+  /auth/google/callback:
+    get:
+      description: Handle Google OAuth callback with authorization code (server-side
+        flow)
+      parameters:
+      - description: Authorization code from Google
+        in: query
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OAuth authentication successful
+          schema:
+            $ref: '#/definitions/response.LoginResponse'
+        "400":
+          description: Missing authorization code
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Failed to exchange code for tokens
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Google OAuth callback handler
+      tags:
+      - authentication
+  /auth/google/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user using Google OAuth ID token (frontend flow)
+      parameters:
+      - description: Google ID token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.GoogleLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Google authentication successful
+          schema:
+            $ref: '#/definitions/response.LoginResponse'
+        "400":
+          description: Invalid ID token format
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Invalid Google token
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Google OAuth login with ID token
+      tags:
+      - authentication
+  /auth/google/redirect:
+    get:
+      description: Redirects user to Google OAuth consent screen for authentication
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Redirect to Google OAuth
+      summary: Initiate Google OAuth redirect
+      tags:
+      - authentication
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with email and password, returns JWT tokens
+      parameters:
+      - description: User login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful with JWT tokens
+          schema:
+            $ref: '#/definitions/response.LoginResponse'
+        "400":
+          description: Invalid input data
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Invalid email or password
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: User login
+      tags:
+      - authentication
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Get a new access token using a valid refresh token
+      parameters:
+      - description: Refresh token request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: New tokens generated successfully
+          schema:
+            $ref: '#/definitions/response.LoginResponse'
+        "400":
+          description: Invalid or expired refresh token
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Refresh access token
+      tags:
+      - authentication
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account with email, password, and personal information
+      parameters:
+      - description: User registration data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User registered successfully
+          schema:
+            $ref: '#/definitions/response.RegisterResponse'
+        "400":
+          description: Invalid input data or validation failed
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Email already exists
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register a new user
+      tags:
+      - authentication
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Reset user password using verification code received via email
+      parameters:
+      - description: Password reset confirmation
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password reset successful
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid code, email, or password requirements not met
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Reset user password
+      tags:
+      - authentication
+  /user/getProfile:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the authenticated user's profile information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User profile retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized - Invalid or missing JWT token
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user profile
+      tags:
+      - user
+  /user/updateProfile:
+    put:
+      consumes:
+      - application/json
+      description: Update the authenticated user's profile information
+      parameters:
+      - description: Profile update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Profile updated successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid input data
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized - Invalid or missing JWT token
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Email already exists
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update user profile
+      tags:
+      - user
+securityDefinitions:
+  BearerAuth:
+    description: 'JWT Bearer token. Format: "Bearer {your_jwt_token}"'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
