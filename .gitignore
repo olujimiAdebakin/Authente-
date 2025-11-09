@@ -40,3 +40,7 @@ logs/
 /bin/
 /tmp/
 /*.tmp
+
+# Docker Compose files
+docker-compose.yaml
+docker-compose.yml
