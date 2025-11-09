@@ -1,34 +1,32 @@
-# Binaries for programs and plugins
+# Binaries
 *.exe
-*.exe~
 *.dll
 *.so
 *.dylib
-
-# Test binary, built with FAIL	. [setup failed]
 *.test
 
-# Output of the go coverage tool
+# Go coverage
 *.out
+coverage/
+coverage.txt
 
-# Dependency directories
+# Vendor (if not vendoring intentionally)
 vendor/
 
-
-# Go workspace file
+# Workspace file
 go.work
 
 # Environment files
 .env
-.env.local
+.env.*
 
-# IDE files
+# IDE/editor
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# OS files
+# System files
 .DS_Store
 Thumbs.db
 
@@ -39,3 +37,6 @@ logs/
 # Build artifacts
 /dist/
 /build/
+/bin/
+/tmp/
+/*.tmp
